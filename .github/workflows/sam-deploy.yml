@@ -64,7 +64,6 @@ jobs:
           BRANCH_NAME="${GITHUB_REF_NAME}"
           echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
-          # Mapear rama -> config-env de samconfig.toml
           case "$BRANCH_NAME" in
             main)
               echo "config_env=default" >> $GITHUB_OUTPUT
@@ -114,9 +113,9 @@ jobs:
       - name: Mostrar outputs
         run: |
           STACK_NAME="seguridad-sam-${{ steps.env.outputs.environment }}"
-          echo "📦 Stack: $STACK_NAME"
-          echo "🌿 Rama: ${{ steps.env.outputs.branch }}"
-          echo "🌍 Ambiente: ${{ steps.env.outputs.environment }}"
+          echo " Stack: $STACK_NAME"
+          echo " Rama: ${{ steps.env.outputs.branch }}"
+          echo " Ambiente: ${{ steps.env.outputs.environment }}"
           echo ""
           aws cloudformation describe-stacks \
             --stack-name "$STACK_NAME" \
