@@ -1,0 +1,25 @@
+{
+  "httpMethod": "POST",
+  "path": "/items",
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json",
+    "Origin": "https://evil-site.com"
+  },
+  "requestContext": {
+    "accountId": "123456789012",
+    "resourceId": "123456",
+    "stage": "dev",
+    "requestId": "e8cg0cd8-9d83-33g8-1c63-15g0fgcdg111",
+    "identity": {
+      "sourceIp": "192.168.1.100",
+      "userAgent": "sqlmap/1.0"
+    },
+    "resourcePath": "/items",
+    "httpMethod": "POST",
+    "apiId": "1234567890"
+  },
+  "body": "{\"name\": \"<script>alert('xss')</script>\", \"description\": \"Normal desc\", \"malicious_field\": \"DROP TABLE items;\"}",
+  "isBase64Encoded": false
+}

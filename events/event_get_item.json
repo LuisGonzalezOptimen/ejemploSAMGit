@@ -1,0 +1,27 @@
+{
+  "httpMethod": "GET",
+  "path": "/items/abc-123",
+  "pathParameters": {
+    "id": "abc-123"
+  },
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json",
+    "Origin": "https://app.midominio.com"
+  },
+  "requestContext": {
+    "accountId": "123456789012",
+    "resourceId": "123456",
+    "stage": "dev",
+    "requestId": "c6af9ac6-7b61-11e6-9a41-93e8deadbeef",
+    "identity": {
+      "sourceIp": "127.0.0.1",
+      "userAgent": "Custom User Agent String"
+    },
+    "resourcePath": "/items/{id}",
+    "httpMethod": "GET",
+    "apiId": "1234567890"
+  },
+  "body": null,
+  "isBase64Encoded": false
+}

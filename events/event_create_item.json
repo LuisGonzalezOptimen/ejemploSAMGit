@@ -1,0 +1,25 @@
+{
+  "httpMethod": "POST",
+  "path": "/items",
+  "pathParameters": null,
+  "queryStringParameters": null,
+  "headers": {
+    "Content-Type": "application/json",
+    "Origin": "https://app.midominio.com"
+  },
+  "requestContext": {
+    "accountId": "123456789012",
+    "resourceId": "123456",
+    "stage": "dev",
+    "requestId": "d7bf9bc7-8c72-22f7-0b52-04f9efbcf000",
+    "identity": {
+      "sourceIp": "127.0.0.1",
+      "userAgent": "Custom User Agent String"
+    },
+    "resourcePath": "/items",
+    "httpMethod": "POST",
+    "apiId": "1234567890"
+  },
+  "body": "{\"name\": \"Mi primer item seguro\", \"description\": \"Creado con validación de input\", \"tags\": [\"seguridad\", \"sam\"]}",
+  "isBase64Encoded": false
+}

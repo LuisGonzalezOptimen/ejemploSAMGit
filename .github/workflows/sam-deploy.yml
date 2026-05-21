@@ -1,0 +1,124 @@
+name: SAM Deploy - Seguridad
+
+on:
+  push:
+    branches:
+      - main
+      - sebasBranch
+      - danielaBranch
+      - julianBranch
+      - luisBranch
+
+  # Permite ejecución manual desde la UI de GitHub
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  PYTHON_VERSION: "3.13"
+
+permissions:
+  id-token: write   # Necesario para OIDC con AWS
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # -------------------------------------------------------
+      # 1. Checkout del código
+      # -------------------------------------------------------
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # -------------------------------------------------------
+      # 2. Setup Python
+      # -------------------------------------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # -------------------------------------------------------
+      # 3. Setup SAM CLI
+      # -------------------------------------------------------
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      # -------------------------------------------------------
+      # 4. Configurar credenciales AWS (OIDC)
+      # -------------------------------------------------------
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # -------------------------------------------------------
+      # 5. Determinar config-env según la rama
+      # -------------------------------------------------------
+      - name: Determinar ambiente
+        id: env
+        run: |
+          BRANCH_NAME="${GITHUB_REF_NAME}"
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+          # Mapear rama -> config-env de samconfig.toml
+          case "$BRANCH_NAME" in
+            main)
+              echo "config_env=default" >> $GITHUB_OUTPUT
+              echo "environment=dev-luis" >> $GITHUB_OUTPUT
+              ;;
+            sebasBranch)
+              echo "config_env=sebas" >> $GITHUB_OUTPUT
+              echo "environment=dev-sebas" >> $GITHUB_OUTPUT
+              ;;
+            danielaBranch)
+              echo "config_env=daniela" >> $GITHUB_OUTPUT
+              echo "environment=dev-daniela" >> $GITHUB_OUTPUT
+              ;;
+            julianBranch)
+              echo "config_env=julian" >> $GITHUB_OUTPUT
+              echo "environment=dev-julian" >> $GITHUB_OUTPUT
+              ;;
+            luisBranch)
+              echo "config_env=luis" >> $GITHUB_OUTPUT
+              echo "environment=dev-luis-alumno" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Rama no configurada para deploy: $BRANCH_NAME"
+              exit 1
+              ;;
+          esac
+
+      # -------------------------------------------------------
+      # 6. SAM Build
+      # -------------------------------------------------------
+      - name: SAM Build
+        run: sam build --config-env ${{ steps.env.outputs.config_env }}
+
+      # -------------------------------------------------------
+      # 7. SAM Deploy
+      # -------------------------------------------------------
+      - name: SAM Deploy
+        run: |
+          sam deploy \
+            --config-env ${{ steps.env.outputs.config_env }} \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
+
+      # -------------------------------------------------------
+      # 8. Mostrar outputs del stack
+      # -------------------------------------------------------
+      - name: Mostrar outputs
+        run: |
+          STACK_NAME="seguridad-sam-${{ steps.env.outputs.environment }}"
+          echo "📦 Stack: $STACK_NAME"
+          echo "🌿 Rama: ${{ steps.env.outputs.branch }}"
+          echo "🌍 Ambiente: ${{ steps.env.outputs.environment }}"
+          echo ""
+          aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs" \
+            --output table

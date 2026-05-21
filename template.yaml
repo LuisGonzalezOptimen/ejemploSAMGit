@@ -1,0 +1,262 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Clase de Seguridad con SAM.
+  Demuestra: mínimo privilegio, CORS, encriptación, environments y parámetros dinámicos.
+  Despliegue via GitHub Actions.
+
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Ambiente de despliegue
+    Default: dev-luis
+    AllowedValues:
+      - dev-luis
+      - dev-sebas
+      - dev-daniela
+      - dev-julian
+      - dev-luis-alumno
+      - test
+      - prod
+
+  LambdaMemory:
+    Type: Number
+    Description: Memoria asignada a las Lambdas (MB)
+    Default: 128
+
+  LambdaTimeout:
+    Type: Number
+    Description: Timeout de las Lambdas (segundos)
+    Default: 10
+
+  CorsOrigin:
+    Type: String
+    Description: Origen permitido para CORS
+    Default: "*"
+
+  RetentionDays:
+    Type: Number
+    Description: Días de retención de logs en CloudWatch
+    Default: 7
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+
+# Configuración compartida entre Lambdas
+Globals:
+  Function:
+    Runtime: python3.13
+    Architectures:
+      - x86_64
+    MemorySize: !Ref LambdaMemory
+    Timeout: !Ref LambdaTimeout
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+    Tracing: Active
+
+
+Resources:
+
+  # ----------------------------------------------------------
+  # API GATEWAY - CORS + Access Logging
+  # ----------------------------------------------------------
+  SecurityApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "seguridad-api-${Environment}"
+      StageName: !Ref Environment
+      TracingEnabled: true
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: !Sub "'${CorsOrigin}'"
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+        Format: >-
+          {"requestId":"$context.requestId",
+          "ip":"$context.identity.sourceIp",
+          "httpMethod":"$context.httpMethod",
+          "path":"$context.resourcePath",
+          "status":"$context.status"}
+      Tags:
+        Environment: !Ref Environment
+
+  # ----------------------------------------------------------
+  # LOG GROUPS - Retención controlada por parámetro
+  # ----------------------------------------------------------
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/apigateway/seguridad-api-${Environment}"
+      RetentionInDays: !Ref RetentionDays
+
+  GetItemLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/get-item-${Environment}"
+      RetentionInDays: !Ref RetentionDays
+
+  CreateItemLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/create-item-${Environment}"
+      RetentionInDays: !Ref RetentionDays
+
+  # ----------------------------------------------------------
+  # DYNAMODB - Encriptación habilitada
+  # ----------------------------------------------------------
+  ItemsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: !If [IsProd, Retain, Delete]
+    UpdateReplacePolicy: !If [IsProd, Retain, Delete]
+    Properties:
+      TableName: !Sub "seguridad-items-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ----------------------------------------------------------
+  # S3 BUCKET - Seguridad: encriptación, bloqueo público, HTTPS
+  # ----------------------------------------------------------
+  SecureBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "seguridad-sam-${Environment}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedMethods: [GET, PUT]
+            AllowedOrigins: [!Ref CorsOrigin]
+            MaxAge: 3600
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  SecureBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SecureBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt SecureBucket.Arn
+              - !Sub "${SecureBucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
+  # ----------------------------------------------------------
+  # LAMBDA: GetItem - MÍNIMO PRIVILEGIO (solo lectura)
+  # ----------------------------------------------------------
+  GetItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "get-item-${Environment}"
+      Handler: app.lambda_handler
+      CodeUri: src/get_item/
+      Description: Obtiene un item de DynamoDB (solo lectura)
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Sid: DynamoDBReadOnly
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:Query
+              Resource:
+                - !GetAtt ItemsTable.Arn
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ItemsTable
+      Events:
+        GetItem:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SecurityApi
+            Path: /items/{id}
+            Method: GET
+
+  # ----------------------------------------------------------
+  # LAMBDA: CreateItem - MÍNIMO PRIVILEGIO (solo escritura)
+  # ----------------------------------------------------------
+  CreateItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "create-item-${Environment}"
+      Handler: app.lambda_handler
+      CodeUri: src/create_item/
+      Description: Crea un item en DynamoDB (solo escritura)
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Sid: DynamoDBWriteOnly
+              Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource:
+                - !GetAtt ItemsTable.Arn
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ItemsTable
+      Events:
+        CreateItem:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SecurityApi
+            Path: /items
+            Method: POST
+
+
+# ============================================================
+# OUTPUTS
+# ============================================================
+Outputs:
+  ApiUrl:
+    Description: URL del API Gateway
+    Value: !Sub "https://${SecurityApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+
+  GetItemFunctionArn:
+    Description: ARN de la función GetItem
+    Value: !GetAtt GetItemFunction.Arn
+
+  CreateItemFunctionArn:
+    Description: ARN de la función CreateItem
+    Value: !GetAtt CreateItemFunction.Arn
+
+  ItemsTableName:
+    Description: Nombre de la tabla DynamoDB
+    Value: !Ref ItemsTable
+
+  SecureBucketName:
+    Description: Nombre del bucket S3
+    Value: !Ref SecureBucket

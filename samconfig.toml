@@ -1,0 +1,113 @@
+# ============================================================
+# SAM CLI Configuration - Despliegue via GitHub Actions
+# Cada alumno despliega su propio stack con su rama
+# ============================================================
+version = 0.1
+
+# ============================================================
+# DEV-LUIS - Instructor (rama: main)
+# ============================================================
+[default.global.parameters]
+stack_name = "seguridad-sam-dev-luis"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+resolve_s3 = true
+region = "us-east-1"
+parameter_overrides = "Environment=\"dev-luis\" LambdaMemory=\"128\" LambdaTimeout=\"10\" CorsOrigin=\"*\" RetentionDays=\"7\""
+tags = "Environment=\"dev-luis\" Team=\"security-class\" ManagedBy=\"SAM-GitHubActions\""
+
+[default.package.parameters]
+resolve_s3 = true
+
+# ============================================================
+# SEBAS (rama: sebasBranch)
+# ============================================================
+[sebas.global.parameters]
+stack_name = "seguridad-sam-dev-sebas"
+
+[sebas.build.parameters]
+cached = true
+parallel = true
+
+[sebas.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+resolve_s3 = true
+region = "us-east-1"
+parameter_overrides = "Environment=\"dev-sebas\" LambdaMemory=\"128\" LambdaTimeout=\"10\" CorsOrigin=\"*\" RetentionDays=\"7\""
+tags = "Environment=\"dev-sebas\" Team=\"security-class\" ManagedBy=\"SAM-GitHubActions\""
+
+[sebas.package.parameters]
+resolve_s3 = true
+
+# ============================================================
+# DANIELA (rama: danielaBranch)
+# ============================================================
+[daniela.global.parameters]
+stack_name = "seguridad-sam-dev-daniela"
+
+[daniela.build.parameters]
+cached = true
+parallel = true
+
+[daniela.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+resolve_s3 = true
+region = "us-east-1"
+parameter_overrides = "Environment=\"dev-daniela\" LambdaMemory=\"128\" LambdaTimeout=\"10\" CorsOrigin=\"*\" RetentionDays=\"7\""
+tags = "Environment=\"dev-daniela\" Team=\"security-class\" ManagedBy=\"SAM-GitHubActions\""
+
+[daniela.package.parameters]
+resolve_s3 = true
+
+# ============================================================
+# JULIAN (rama: julianBranch)
+# ============================================================
+[julian.global.parameters]
+stack_name = "seguridad-sam-dev-julian"
+
+[julian.build.parameters]
+cached = true
+parallel = true
+
+[julian.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+resolve_s3 = true
+region = "us-east-1"
+parameter_overrides = "Environment=\"dev-julian\" LambdaMemory=\"128\" LambdaTimeout=\"10\" CorsOrigin=\"*\" RetentionDays=\"7\""
+tags = "Environment=\"dev-julian\" Team=\"security-class\" ManagedBy=\"SAM-GitHubActions\""
+
+[julian.package.parameters]
+resolve_s3 = true
+
+# ============================================================
+# LUIS - Alumno (rama: luisBranch)
+# ============================================================
+[luis.global.parameters]
+stack_name = "seguridad-sam-dev-luis-alumno"
+
+[luis.build.parameters]
+cached = true
+parallel = true
+
+[luis.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+resolve_s3 = true
+region = "us-east-1"
+parameter_overrides = "Environment=\"dev-luis-alumno\" LambdaMemory=\"128\" LambdaTimeout=\"10\" CorsOrigin=\"*\" RetentionDays=\"7\""
+tags = "Environment=\"dev-luis-alumno\" Team=\"security-class\" ManagedBy=\"SAM-GitHubActions\""
+
+[luis.package.parameters]
+resolve_s3 = true
